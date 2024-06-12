@@ -4,6 +4,7 @@ using Godot;
 public partial class RagdollBone : RigidBody3D
 {
     [Export] public string BoneName;
+    [Export] public Skeleton3D ParentSkeleton;
     public int BoneIndex = -1;
 
     public override void _Ready()
@@ -14,12 +15,11 @@ public partial class RagdollBone : RigidBody3D
         }
         else
         {
-            var parent = GetParent();
-            if (parent is Skeleton3D skeleton)
+            if (ParentSkeleton != null)
             {
                 if (!string.IsNullOrEmpty(BoneName))
                 {
-                    BoneIndex = skeleton.FindBone(BoneName);
+                    BoneIndex = ParentSkeleton.FindBone(BoneName);
                     if (BoneIndex < 0)
                     {
                         GD.PrintErr($"The Ragdoll Bone [{Name}] bone name [{BoneName}] does not match any bone in the skeleton");
@@ -39,14 +39,21 @@ public partial class RagdollBone : RigidBody3D
 
     public override void _PhysicsProcess(double delta)
     {
-        var parent = GetParent<Skeleton3D>();
-        if (parent != null)
+        if (ParentSkeleton != null)
         {
-            var boneGlobalRotation = parent.GlobalTransform.Basis * parent.GetBoneGlobalPose(BoneIndex).Basis;
-            var b2TRotation = boneGlobalRotation.Inverse() * Transform.Basis;
-            Basis transform = parent.GetBonePose(BoneIndex).Basis * b2TRotation;
-            parent.SetBonePoseRotation(BoneIndex, transform.GetRotationQuaternion());
-            parent.SetBonePoseScale(BoneIndex, transform.Scale);
+            // Get the global transform of the bone in the skeleton
+            Transform3D boneGlobalTransform = ParentSkeleton.GetBoneGlobalPose(BoneIndex);
+
+            // Calculate the transform difference between the current global transform of the ragdoll bone and the skeleton bone's global transform
+            Transform3D transformDifference = boneGlobalTransform.AffineInverse() * GlobalTransform;
+
+            // Apply the transform difference to the bone's local pose
+            Transform3D newBonePose = ParentSkeleton.GetBonePose(BoneIndex) * transformDifference;
+
+            // Set the bone's new pose in the skeleton
+            ParentSkeleton.SetBonePosePosition(BoneIndex, newBonePose.Origin);
+            ParentSkeleton.SetBonePoseRotation(BoneIndex, newBonePose.Basis.GetRotationQuaternion());
+            ParentSkeleton.SetBonePoseScale(BoneIndex, newBonePose.Basis.Scale);
         }
     }
 }

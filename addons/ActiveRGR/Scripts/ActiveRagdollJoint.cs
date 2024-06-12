@@ -3,55 +3,44 @@ using Godot;
 [Tool]
 public partial class ActiveRagdollJoint : Generic6DofJoint3D
 {
-    public Skeleton3D ParentSkeleton;
-    public Skeleton3D TargetSkeleton;
+    [Export] public Skeleton3D ParentSkeleton;
+    [Export] public Skeleton3D TargetSkeleton;
     [Export] public int BoneAIndex = -1;
     [Export] public int BoneBIndex = -1;
-    [Export] public float MatchingVelocityMultiplier = 1;
+    [Export] public float MatchingVelocityMultiplier = 1f;
 
     public override void _Ready()
     {
+        DeclareFlagForAllAxis(Flag.EnableAngularLimit, false);
+        DeclareFlagForAllAxis(Flag.EnableMotor, true);
+        
         if (!Engine.IsEditorHint())
         {
-            SetParamX(Param.AngularMotorForceLimit, 9999999);
-            SetParamY(Param.AngularMotorForceLimit, 9999999);
-            SetParamZ(Param.AngularMotorForceLimit, 9999999);
-
-            // TargetSkeleton = GetNode<Skeleton3D>(AnimationSkeletonPath);
-            if (TargetSkeleton != null)
-            {
-                TraceSkeleton(true);
-            }
-            else
-            {
-                TraceSkeleton(false);
-            }
-
+            SetParamX(Param.AngularMotorForceLimit, 1);
+            SetParamY(Param.AngularMotorForceLimit, 1);
+            SetParamZ(Param.AngularMotorForceLimit, 1);
+            
+            SetPhysicsProcess(TargetSkeleton != null);
+            
             if (BoneAIndex < 0)
             {
                 var nodeA = TargetSkeleton!.GetNode("node_A") as RagdollBone;
-                BoneAIndex = nodeA.BoneIndex;
+                BoneAIndex = nodeA!.BoneIndex;
             }
 
             if (BoneBIndex < 0)
             {
                 var nodeB = TargetSkeleton!.GetNode("node_b") as RagdollBone;
-                BoneBIndex = nodeB.BoneIndex;
+                BoneBIndex = nodeB!.BoneIndex;
             }
         }
-    }
-
-    public void TraceSkeleton(bool value)
-    {
-        SetPhysicsProcess(value);
-        DeclareFlagForAllAxis(Flag.EnableAngularLimit, !value);
-        DeclareFlagForAllAxis(Flag.EnableMotor, value);
     }
 
     public override void _PhysicsProcess(double delta)
     {
         if (!Engine.IsEditorHint())
         {
+            
             var targetRotation = TargetSkeleton.GetBoneGlobalPose(BoneBIndex).Basis.Inverse() * ParentSkeleton.GetBoneGlobalPose(BoneBIndex).Basis;
             var targetVelocity = targetRotation.GetEuler() * MatchingVelocityMultiplier;
 
