@@ -18,12 +18,9 @@ config/features=PackedStringArray("4.2", "C#")
 
 project/assembly_name="Ar Org"
 
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/ActiveRGR/plugin.cfg")
-
 [physics]
 
+3d/physics_engine="JoltPhysics3D"
 common/enable_pause_aware_picking=true
 
 [rendering]

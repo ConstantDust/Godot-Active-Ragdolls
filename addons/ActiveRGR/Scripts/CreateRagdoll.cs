@@ -13,8 +13,7 @@ public partial class CreateRagdoll : Skeleton3D
     public ParentingType ParentingType = ParentingType.Skeleton;
     
     [Export] public Skeleton3D AnimationSkeleton;
-    [Export] public string BoneWhitelist = "";
-    private Array<int> _whitelist = new();
+    [Export] public Array<string> Blacklist = new();
 
     [Signal] public delegate void TraceAnimationSkeletonEventHandler(bool value);
 
@@ -40,23 +39,10 @@ public partial class CreateRagdoll : Skeleton3D
 
     private void SetCreateRagdoll()
     {
-        if (!string.IsNullOrEmpty(BoneWhitelist))
+        for (int i = 0; i < GetBoneCount(); i++)
         {
-            _whitelist.Clear();
-            if (InterpretWhitelist())
-            {
-                foreach (var boneId in _whitelist)
-                {
-                    AddRagdollBone(boneId);
-                }
-            }
-        }
-        else
-        {
-            for (int i = 0; i < GetBoneCount(); i++)
-            {
-                AddRagdollBone(i);
-            }
+            if(Blacklist.Contains(GetCleanBoneName(i))) continue;
+            AddRagdollBone(i);
         }
     }
 
@@ -68,7 +54,7 @@ public partial class CreateRagdoll : Skeleton3D
         bone.Transform = GetBoneGlobalPose(boneId);
 
         var collision = new CollisionShape3D();
-        collision.Name = (bone.BoneName+"Collider");
+        collision.Name = (bone.BoneName+"_collider");
 
         if (GetBoneChildren(boneId).Length > 0)
         {
@@ -91,30 +77,10 @@ public partial class CreateRagdoll : Skeleton3D
 
     private void SetCreateJoints()
     {
-        if (!string.IsNullOrEmpty(BoneWhitelist))
+        for (int i = 0; i < GetBoneCount(); i++)
         {
-            _whitelist.Clear();
-            if (InterpretWhitelist())
-            {
-                if (_whitelist.Count > 1)
-                {
-                    foreach (var boneId in _whitelist)
-                    {
-                        AddJointFor(boneId);
-                    }
-                }
-                else
-                {
-                    GD.PushError("Too few bones whitelisted. Need at least two.");
-                }
-            }
-        }
-        else
-        {
-            for (int i = 1; i < GetBoneCount(); i++)
-            {
-                AddJointFor(i);
-            }
+            if(Blacklist.Contains(GetCleanBoneName(i))) continue;
+            AddJointFor(i);
         }
     }
 
@@ -124,11 +90,17 @@ public partial class CreateRagdoll : Skeleton3D
         {
             var nodeA = GetNodeOrNull<RagdollBone>(GetCleanBoneName(GetBoneParent(boneId)));
             var nodeB = GetNodeOrNull<RagdollBone>(GetCleanBoneName(boneId));
+            
             if (nodeA != null && nodeB != null)
             {
+                if(Blacklist.Contains(nodeA.BoneName)) return;
+                if(Blacklist.Contains(nodeB.BoneName)) return;
+                
                 var joint = new ActiveRagdollJoint();
                 joint.Transform = GetBoneGlobalPose(boneId);
-                joint.Name = $"JOINT_{nodeA.Name}_{nodeB.Name}";
+                joint.Name = $"{nodeA.Name}_to_{nodeB.Name}";
+                joint.ParentSkeleton = this;
+                joint.TargetSkeleton = AnimationSkeleton;
                 joint.BoneAIndex = FindBone(nodeA.BoneName);
                 joint.BoneBIndex = FindBone(nodeB.BoneName);
 
@@ -144,13 +116,10 @@ public partial class CreateRagdoll : Skeleton3D
                 }
                 joint.Owner = GetOwner<Node>();
                 
-                if (AnimationSkeleton != null) joint.AnimationSkeletonPath = joint.GetPathTo(AnimationSkeleton); 
-                
                 joint.Set("node_a", joint.GetPathTo(nodeA));
                 joint.Set("node_b", joint.GetPathTo(nodeB));
 
                 TraceAnimationSkeleton += joint.TraceSkeleton;
-                
             }
         }
     }
@@ -201,32 +170,6 @@ public partial class CreateRagdoll : Skeleton3D
         }
     }
 
-    private bool InterpretWhitelist()
-    {
-        var ranges = BoneWhitelist.Split(",");
-        foreach (var range in ranges)
-        {
-            var num = range.Split("-");
-            if (num.Length == 1)
-            {
-                _whitelist.Add(int.Parse(num[0]));
-            }
-            else if (num.Length == 2)
-            {
-                for (int i = int.Parse(num[0]); i <= int.Parse(num[1]); i++)
-                {
-                    _whitelist.Add(i);
-                }
-            }
-            else
-            {
-                GD.PushError("Incorrect entry in whitelist");
-                return false;
-            }
-        }
-        return true;
-    }
-
     private string GetCleanBoneName(int boneId)
     {
         return GetBoneName(boneId).Replace(".", "_");
@@ -259,6 +202,11 @@ public partial class CreateRagdoll : Skeleton3D
     public void StopTracing()
     {
         CallDeferred("emit_signal", "TraceAnimationSkeleton", false);
+    }
+
+    public override void _Ready()
+    {
+        StartTracing();
     }
 }
 

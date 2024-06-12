@@ -3,8 +3,8 @@ using Godot;
 [Tool]
 public partial class ActiveRagdollJoint : Generic6DofJoint3D
 {
-    [Export] public NodePath AnimationSkeletonPath;
-    private Skeleton3D _targetSkeleton;
+    public Skeleton3D ParentSkeleton;
+    public Skeleton3D TargetSkeleton;
     [Export] public int BoneAIndex = -1;
     [Export] public int BoneBIndex = -1;
     [Export] public float MatchingVelocityMultiplier = 1;
@@ -17,34 +17,26 @@ public partial class ActiveRagdollJoint : Generic6DofJoint3D
             SetParamY(Param.AngularMotorForceLimit, 9999999);
             SetParamZ(Param.AngularMotorForceLimit, 9999999);
 
-            var parent = GetParent();
-            if (parent is Skeleton3D skeleton)
+            // TargetSkeleton = GetNode<Skeleton3D>(AnimationSkeletonPath);
+            if (TargetSkeleton != null)
             {
-                _targetSkeleton = GetNode<Skeleton3D>(AnimationSkeletonPath);
-                if (_targetSkeleton != null)
-                {
-                    TraceSkeleton(true);
-                }
-                else
-                {
-                    TraceSkeleton(false);
-                }
-
-                if (BoneAIndex < 0)
-                {
-                    var nodeA = GetNode("nodes/node_A") as RagdollBone;
-                    BoneAIndex = nodeA.BoneIndex;
-                }
-
-                if (BoneBIndex < 0)
-                {
-                    var nodeB = GetNode("nodes/node_b") as RagdollBone;
-                    BoneBIndex = nodeB.BoneIndex;
-                }
+                TraceSkeleton(true);
             }
             else
             {
-                GD.PrintErr($"The Ragdoll Bone [{Name}] is supposed to be a child of a Skeleton3D");
+                TraceSkeleton(false);
+            }
+
+            if (BoneAIndex < 0)
+            {
+                var nodeA = TargetSkeleton!.GetNode("node_A") as RagdollBone;
+                BoneAIndex = nodeA.BoneIndex;
+            }
+
+            if (BoneBIndex < 0)
+            {
+                var nodeB = TargetSkeleton!.GetNode("node_b") as RagdollBone;
+                BoneBIndex = nodeB.BoneIndex;
             }
         }
     }
@@ -60,7 +52,7 @@ public partial class ActiveRagdollJoint : Generic6DofJoint3D
     {
         if (!Engine.IsEditorHint())
         {
-            var targetRotation = _targetSkeleton.GetBoneGlobalPose(BoneBIndex).Basis.Inverse() * GetParent<Skeleton3D>().GetBoneGlobalPose(BoneBIndex).Basis;
+            var targetRotation = TargetSkeleton.GetBoneGlobalPose(BoneBIndex).Basis.Inverse() * ParentSkeleton.GetBoneGlobalPose(BoneBIndex).Basis;
             var targetVelocity = targetRotation.GetEuler() * MatchingVelocityMultiplier;
 
             SetParamX(Param.AngularMotorTargetVelocity, targetVelocity.X);
