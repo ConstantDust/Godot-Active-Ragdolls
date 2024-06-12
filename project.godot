@@ -11,11 +11,16 @@ config_version=5
 [application]
 
 config/name="Ar Org"
+run/main_scene="res://Example/Demo.tscn"
 config/features=PackedStringArray("4.2", "C#")
 
 [dotnet]
 
 project/assembly_name="Ar Org"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/ActiveRGR/plugin.cfg")
 
 [physics]
 

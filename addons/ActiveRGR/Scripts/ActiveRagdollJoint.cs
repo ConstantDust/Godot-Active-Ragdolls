@@ -3,11 +3,11 @@ using Godot;
 [Tool]
 public partial class ActiveRagdollJoint : Generic6DofJoint3D
 {
-    [Export] public NodePath animationSkeletonPath;
-    private Skeleton3D targetSkeleton;
-    [Export] public int boneAIndex = -1;
-    [Export] public int boneBIndex = -1;
-    [Export] public float matchingVelocityMultiplier = 1;
+    [Export] public NodePath AnimationSkeletonPath;
+    private Skeleton3D _targetSkeleton;
+    [Export] public int BoneAIndex = -1;
+    [Export] public int BoneBIndex = -1;
+    [Export] public float MatchingVelocityMultiplier = 1;
 
     public override void _Ready()
     {
@@ -20,8 +20,8 @@ public partial class ActiveRagdollJoint : Generic6DofJoint3D
             var parent = GetParent();
             if (parent is Skeleton3D skeleton)
             {
-                targetSkeleton = GetNode<Skeleton3D>(animationSkeletonPath);
-                if (targetSkeleton != null)
+                _targetSkeleton = GetNode<Skeleton3D>(AnimationSkeletonPath);
+                if (_targetSkeleton != null)
                 {
                     TraceSkeleton(true);
                 }
@@ -30,16 +30,16 @@ public partial class ActiveRagdollJoint : Generic6DofJoint3D
                     TraceSkeleton(false);
                 }
 
-                if (boneAIndex < 0)
+                if (BoneAIndex < 0)
                 {
                     var nodeA = GetNode("nodes/node_A") as RagdollBone;
-                    boneAIndex = nodeA.BoneIndex;
+                    BoneAIndex = nodeA.BoneIndex;
                 }
 
-                if (boneBIndex < 0)
+                if (BoneBIndex < 0)
                 {
                     var nodeB = GetNode("nodes/node_b") as RagdollBone;
-                    boneBIndex = nodeB.BoneIndex;
+                    BoneBIndex = nodeB.BoneIndex;
                 }
             }
             else
@@ -60,8 +60,8 @@ public partial class ActiveRagdollJoint : Generic6DofJoint3D
     {
         if (!Engine.IsEditorHint())
         {
-            var targetRotation = targetSkeleton.GetBoneGlobalPose(boneBIndex).Basis.Inverse() * GetParent<Skeleton3D>().GetBoneGlobalPose(boneBIndex).Basis;
-            var targetVelocity = targetRotation.GetEuler() * matchingVelocityMultiplier;
+            var targetRotation = _targetSkeleton.GetBoneGlobalPose(BoneBIndex).Basis.Inverse() * GetParent<Skeleton3D>().GetBoneGlobalPose(BoneBIndex).Basis;
+            var targetVelocity = targetRotation.GetEuler() * MatchingVelocityMultiplier;
 
             SetParamX(Param.AngularMotorTargetVelocity, targetVelocity.X);
             SetParamY(Param.AngularMotorTargetVelocity, targetVelocity.Y);
