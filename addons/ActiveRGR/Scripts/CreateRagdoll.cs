@@ -7,7 +7,8 @@ public partial class CreateRagdoll : Skeleton3D
     [Export] public bool CreateRigidbodies;
     [Export] public bool CreateJoints;
     [Export] public bool HaveDebugMeshes;
-    
+
+    [Export] public float BoneThickness = 0.1f;
     [Export(PropertyHint.Enum, "Skeleton,NodeA,NodeB")] 
     public ParentingType ParentingType = ParentingType.Skeleton;
     
@@ -68,12 +69,21 @@ public partial class CreateRagdoll : Skeleton3D
 
         var collision = new CollisionShape3D();
         collision.Name = (bone.BoneName+"Collider");
-        float radius = GetBoneGlobalPose(boneId).Basis.Scale.X;
-        float height = GetBoneGlobalPose(boneId).Basis.Scale.Z;
-        collision.Shape = new CapsuleShape3D { Radius = radius, Height = height};
-        collision.RotateX(Mathf.Pi / 2);
-        bone.AddChild(collision);
 
+        if (GetBoneChildren(boneId).Length > 0)
+        {
+            Vector3 boneEnd = GetBoneChildrenAveragePosition(boneId);
+            float boneLength = (boneEnd - GetBoneGlobalPose(boneId).Origin).Length();
+            collision.Shape = new CapsuleShape3D { Radius = boneLength*BoneThickness, Height = boneLength};
+            collision.Position = Position + Vector3.Up * (boneLength * 0.5f);
+        }
+        else
+        {
+            collision.Shape = new SphereShape3D { Radius = 0.1f};
+            collision.Position = Position;
+        }
+        
+        bone.AddChild(collision);
         AddChild(bone);
         bone.Owner = GetOwner<Node>();
         collision.Owner = GetOwner<Node>();
@@ -220,6 +230,25 @@ public partial class CreateRagdoll : Skeleton3D
     private string GetCleanBoneName(int boneId)
     {
         return GetBoneName(boneId).Replace(".", "_");
+    }
+    
+    private Vector3 GetBoneChildrenAveragePosition(int boneId)
+    {
+        Vector3 averagePosition = Vector3.Zero;
+        int childrenCount = 0;
+
+        foreach (int childBoneId in GetBoneChildren(boneId))
+        {
+            averagePosition += GetBoneGlobalPose(childBoneId).Origin;
+            childrenCount++;
+        }
+
+        if (childrenCount > 0)
+        {
+            averagePosition /= childrenCount;
+        }
+
+        return averagePosition;
     }
 
     public void StartTracing()
