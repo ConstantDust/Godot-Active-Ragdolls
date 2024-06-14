@@ -1,10 +1,10 @@
 using Godot;
 
-[Tool]
 public partial class RagdollBone : RigidBody3D
 {
     [Export] public string BoneName;
     [Export] public Skeleton3D ParentSkeleton;
+    [Export] public Skeleton3D TargetSkeleton;
     public int BoneIndex = -1;
 
     public override void _Ready()
@@ -36,6 +36,27 @@ public partial class RagdollBone : RigidBody3D
             }
         }
     }
+    
+    public void UpdateBonePhysics(Skeleton3D targetSkeleton, float delta, RagdollBone parent)
+    {
+        //TODO: make this work with the local target
+        
+        // Gets the true global transform of the bone
+        Transform3D target = targetSkeleton.GlobalTransform * targetSkeleton.GetBoneGlobalPose(BoneIndex);
+        Transform3D current = GlobalTransform;
+        
+        // Set linear movement
+        Vector3 positionOffset = target.Origin - current.Origin;
+        Vector3 force = HookesLaw(positionOffset, LinearVelocity, 30f, 2f);
+        LinearVelocity += force * delta;
+            
+        // Set angular movement
+        Basis rotationOffset = (target.Basis * current.Basis.Inverse());
+        Vector3 torque = HookesLaw(rotationOffset.GetEuler(), AngularVelocity, 500f, 5f);
+        AngularVelocity += torque * delta;
+        
+        // GlobalTransform = target;
+    }
 
     public override void _PhysicsProcess(double delta)
     {
@@ -55,5 +76,15 @@ public partial class RagdollBone : RigidBody3D
             ParentSkeleton.SetBonePoseRotation(BoneIndex, newBonePose.Basis.GetRotationQuaternion());
             ParentSkeleton.SetBonePoseScale(BoneIndex, newBonePose.Basis.Scale);
         }
+
+        // check is this is a root bone
+        if (TargetSkeleton != null && ParentSkeleton.GetBoneParent(BoneIndex) < 0)
+        {
+            // Update here because root bones dont have a joint
+            UpdateBonePhysics(TargetSkeleton, (float)delta, null);
+        }
     }
+    
+    // function for hookes law with damping
+    Vector3 HookesLaw(Vector3 offset, Vector3 velocity, float stiffness, float damping) => (stiffness * offset) - (damping * velocity);
 }

@@ -1,3 +1,4 @@
+using System.Drawing;
 using Godot;
 using Godot.Collections;
 
@@ -14,8 +15,6 @@ public partial class RigidbodyRagdoll : Skeleton3D
     
     [Export] public Skeleton3D AnimationSkeleton;
     [Export] public Array<string> Blacklist = new();
-
-    [Signal] public delegate void TraceAnimationSkeletonEventHandler(bool value);
 
     public override void _Process(double delta)
     {
@@ -59,7 +58,7 @@ public partial class RigidbodyRagdoll : Skeleton3D
         var collision = new CollisionShape3D();
         collision.Name = (bone.BoneName+"_collider");
 
-        if (GetBoneChildren(boneId).Length > 0)
+        if (GetBoneChildren(boneId).Length == 1)
         {
             Vector3 boneEnd = GetBoneChildrenAveragePosition(boneId);
             float boneLength = (boneEnd - GetBoneGlobalPose(boneId).Origin).Length();
@@ -72,6 +71,24 @@ public partial class RigidbodyRagdoll : Skeleton3D
                             mesh.Position = Position + Vector3.Up * (boneLength * 0.5f);
             }
             
+        }
+        else if (GetBoneChildren(boneId).Length > 1)
+        {
+            Vector3 boneEnd = GetBoneChildrenAveragePosition(boneId);
+            float boneLength = (boneEnd - GetBoneGlobalPose(boneId).Origin).Length();
+            Vector3 size = Vector3.Up * boneLength;
+
+            size.X = BoneThickness * 0.25f;
+            size.Z = BoneThickness * 0.25f;
+            
+            collision.Shape = new BoxShape3D { Size = size };
+            collision.Position = Position + Vector3.Up * (boneLength * 0.5f);
+            
+            if(CreateCollisionMesh)
+            {
+                mesh.Mesh = new BoxMesh { Size = size };
+                mesh.Position = Position + Vector3.Up * (boneLength * 0.5f);
+            }
         }
         else
         {
@@ -98,6 +115,7 @@ public partial class RigidbodyRagdoll : Skeleton3D
         
         bone.Owner = GetOwner<Node>();
         bone.ParentSkeleton = this;
+        bone.TargetSkeleton = AnimationSkeleton;
     }
 
     private void SetCreateJoints()
@@ -116,7 +134,7 @@ public partial class RigidbodyRagdoll : Skeleton3D
 
     private void AddJointFor(int boneId)
     {
-        if (GetBoneParent(boneId) >= 0)
+        if (boneId >= 0 && GetBoneParent(boneId) >= 0)
         {
             var parentNode = GetNodeOrNull<RagdollBone>(GetCleanBoneName(GetBoneParent(boneId)));
             var thisNode = GetNodeOrNull<RagdollBone>(GetCleanBoneName(boneId));
@@ -150,6 +168,8 @@ public partial class RigidbodyRagdoll : Skeleton3D
                 joint.Set("node_a", joint.GetPathTo(parentNode));
                 joint.Set("node_b", joint.GetPathTo(thisNode));
 
+                joint.BoneA = parentNode;
+                joint.BoneB = thisNode;
                 joint.ParentSkeleton = this;
                 joint.TargetSkeleton = AnimationSkeleton;
             }
@@ -180,20 +200,6 @@ public partial class RigidbodyRagdoll : Skeleton3D
         return averagePosition;
     }
 
-    public void StartTracing()
-    {
-        EmitSignal(SignalName.TraceAnimationSkeleton, true);
-    }
-
-    public void StopTracing()
-    {
-        EmitSignal(SignalName.TraceAnimationSkeleton, false);
-    }
-
-    public override void _Ready()
-    {
-        StartTracing();
-    }
 }
 
 public enum ParentingType
