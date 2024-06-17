@@ -52,6 +52,10 @@ public partial class RigidbodyRagdoll : Skeleton3D
         bone.Name = GetCleanBoneName(boneId);
         bone.Transform = GetBoneGlobalPose(boneId);
 
+        bone.CanSleep = false;
+        bone.FreezeMode = RigidBody3D.FreezeModeEnum.Kinematic;
+        bone.ContinuousCd = true;
+        
         // TESTING
         var mesh = new MeshInstance3D();
         
@@ -170,6 +174,7 @@ public partial class RigidbodyRagdoll : Skeleton3D
 
                 joint.BoneA = parentNode;
                 joint.BoneB = thisNode;
+                
                 joint.ParentSkeleton = this;
                 joint.TargetSkeleton = AnimationSkeleton;
             }

@@ -13,6 +13,7 @@ config_version=5
 config/name="Ar Org"
 run/main_scene="res://Example/Demo.tscn"
 config/features=PackedStringArray("4.2", "C#")
+config/icon="res://icon.svg"
 
 [dotnet]
 

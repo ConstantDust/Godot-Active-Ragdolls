@@ -36,27 +36,6 @@ public partial class RagdollBone : RigidBody3D
             }
         }
     }
-    
-    public void UpdateBonePhysics(Skeleton3D targetSkeleton, float delta, RagdollBone parent)
-    {
-        //TODO: make this work with the local target
-        
-        // Gets the true global transform of the bone
-        Transform3D target = targetSkeleton.GlobalTransform * targetSkeleton.GetBoneGlobalPose(BoneIndex);
-        Transform3D current = GlobalTransform;
-        
-        // Set linear movement
-        Vector3 positionOffset = target.Origin - current.Origin;
-        Vector3 force = HookesLaw(positionOffset, LinearVelocity, 30f, 2f);
-        LinearVelocity += force * delta;
-            
-        // Set angular movement
-        Basis rotationOffset = (target.Basis * current.Basis.Inverse());
-        Vector3 torque = HookesLaw(rotationOffset.GetEuler(), AngularVelocity, 500f, 5f);
-        AngularVelocity += torque * delta;
-        
-        // GlobalTransform = target;
-    }
 
     public override void _PhysicsProcess(double delta)
     {
@@ -75,13 +54,6 @@ public partial class RagdollBone : RigidBody3D
             ParentSkeleton.SetBonePosePosition(BoneIndex, newBonePose.Origin);
             ParentSkeleton.SetBonePoseRotation(BoneIndex, newBonePose.Basis.GetRotationQuaternion());
             ParentSkeleton.SetBonePoseScale(BoneIndex, newBonePose.Basis.Scale);
-        }
-
-        // check is this is a root bone
-        if (TargetSkeleton != null && ParentSkeleton.GetBoneParent(BoneIndex) < 0)
-        {
-            // Update here because root bones dont have a joint
-            UpdateBonePhysics(TargetSkeleton, (float)delta, null);
         }
     }
     

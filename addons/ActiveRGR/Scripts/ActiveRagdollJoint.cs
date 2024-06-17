@@ -9,6 +9,8 @@ public partial class ActiveRagdollJoint : Generic6DofJoint3D
     [Export] public RagdollBone BoneA;
     [Export] public RagdollBone BoneB;
     
+    [Export] public float Stiffness = 2f;
+        
     [Export] public int BoneAIndex = -1;
     [Export] public int BoneBIndex = -1;
     
@@ -16,8 +18,9 @@ public partial class ActiveRagdollJoint : Generic6DofJoint3D
 
     public override void _Ready()
     {
-        // DeclareFlagForAllAxis(Flag.EnableAngularLimit, true);
-        // DeclareParamForAllAxis(Param.AngularForceLimit, 25000f);
+        DeclareFlagForAllAxis(Flag.EnableAngularLimit, false);
+        DeclareParamForAllAxis(Param.AngularMotorForceLimit, 9999999);
+        DeclareFlagForAllAxis(Flag.EnableMotor, true);
         
         if (!Engine.IsEditorHint())
         {
@@ -41,8 +44,21 @@ public partial class ActiveRagdollJoint : Generic6DofJoint3D
     public override void _PhysicsProcess(double delta)
     {
         if (Engine.IsEditorHint()) return;
-        BoneA.UpdateBonePhysics(TargetSkeleton, (float)delta, BoneA);
         
+        Basis targetVelocity = TargetSkeleton.GetBoneGlobalPose(BoneBIndex).Basis.Inverse() * ParentSkeleton.GetBoneGlobalPose(BoneBIndex).Basis;
+        
+        // Steps for a (hopefully) goodd ragdoll
+        // 1. get the local rotation of the animation skeleton
+        // 2. get the local rotation of the physics state skeleton
+        // 3. find the offset between the two
+        // 4. apply forces to rotate the bone into the correct direction
+        
+        // (Note) i should probably also apply a linear force to help push bones into the correct direction
+        // for this use Rigidbody.ApplyForce() because linear motor isn't implemented or some bs
+        
+        SetParamX(Param.AngularMotorTargetVelocity, targetVelocity.GetEuler().X * Stiffness * BoneA.Mass);
+        SetParamY(Param.AngularMotorTargetVelocity, targetVelocity.GetEuler().Y * Stiffness * BoneA.Mass);
+        SetParamZ(Param.AngularMotorTargetVelocity, targetVelocity.GetEuler().Z * Stiffness * BoneA.Mass);
     }
 
     private void DeclareFlagForAllAxis(Flag param, bool value)
