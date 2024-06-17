@@ -9,7 +9,7 @@ public partial class ActiveRagdollJoint : Generic6DofJoint3D
     [Export] public RagdollBone BoneA;
     [Export] public RagdollBone BoneB;
     
-    [Export] public float Stiffness = 2f;
+    [Export] public float Stiffness = 0f;
         
     [Export] public int BoneAIndex = -1;
     [Export] public int BoneBIndex = -1;
@@ -44,21 +44,25 @@ public partial class ActiveRagdollJoint : Generic6DofJoint3D
     public override void _PhysicsProcess(double delta)
     {
         if (Engine.IsEditorHint()) return;
-        
-        Basis targetVelocity = TargetSkeleton.GetBoneGlobalPose(BoneBIndex).Basis.Inverse() * ParentSkeleton.GetBoneGlobalPose(BoneBIndex).Basis;
-        
         // Steps for a (hopefully) goodd ragdoll
-        // 1. get the local rotation of the animation skeleton
-        // 2. get the local rotation of the physics state skeleton
+        // X // 1. get the local rotation of the animation skeleton
+        // X // 2. get the local rotation of the physics state skeleton
         // 3. find the offset between the two
         // 4. apply forces to rotate the bone into the correct direction
         
         // (Note) i should probably also apply a linear force to help push bones into the correct direction
         // for this use Rigidbody.ApplyForce() because linear motor isn't implemented or some bs
         
-        SetParamX(Param.AngularMotorTargetVelocity, targetVelocity.GetEuler().X * Stiffness * BoneA.Mass);
-        SetParamY(Param.AngularMotorTargetVelocity, targetVelocity.GetEuler().Y * Stiffness * BoneA.Mass);
-        SetParamZ(Param.AngularMotorTargetVelocity, targetVelocity.GetEuler().Z * Stiffness * BoneA.Mass);
+        // Gets the b bone relative to a
+        Transform3D animationBoneTransform = TargetSkeleton.GetBonePose(BoneBIndex);
+        Transform3D physicsBoneTransform = ParentSkeleton.GetBonePose(BoneBIndex);
+
+        Basis rotationOffset = animationBoneTransform.Basis.Inverse() * physicsBoneTransform.Basis;
+        
+        
+        SetParamX(Param.AngularMotorTargetVelocity, rotationOffset.GetEuler().X * Stiffness);
+        SetParamY(Param.AngularMotorTargetVelocity, rotationOffset.GetEuler().Y * Stiffness);
+        SetParamZ(Param.AngularMotorTargetVelocity, rotationOffset.GetEuler().Z * Stiffness);
     }
 
     private void DeclareFlagForAllAxis(Flag param, bool value)
